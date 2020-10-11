@@ -1,0 +1,49 @@
+*/web/**
+.mvn/
+log/
+mvnw
+mvnw.cmd
+
+HELP.md
+target/
+!.mvn/wrapper/maven-wrapper.jar
+!**/src/main/**
+!**/src/test/**
+
+dependency-reduced-pom.xml
+*.db/
+*.log
+*.csv
+*.rdf
+*.tsv
+*.zip
+*.gz
+*.shell_history
+.DS_Store
+
+### STS ###
+.apt_generated
+.classpath
+.factorypath
+.project
+.settings
+.springBeans
+.sts4-cache
+
+### IntelliJ IDEA ###
+.idea
+*.iws
+*.iml
+*.ipr
+*/.idea/*.xml
+
+### VS Code ###
+/.vscode/
+
+### NetBeans ###
+/nbproject/private/
+/nbbuild/
+/dist/
+/nbdist/
+/.nb-gradle/
+build/
