@@ -4,7 +4,10 @@ import io.searchbox.action.BulkableAction;
 import io.searchbox.client.JestClient;
 import io.searchbox.client.JestResult;
 import io.searchbox.client.JestResultHandler;
-import io.searchbox.core.*;
+import io.searchbox.core.Bulk;
+import io.searchbox.core.Delete;
+import io.searchbox.core.DocumentResult;
+import io.searchbox.core.Index;
 import org.neo4j.graphdb.Entity;
 import org.neo4j.graphdb.Label;
 import org.neo4j.graphdb.Node;
@@ -188,13 +191,13 @@ public class ElasticSearchEventHandler implements TransactionEventHandler<Collec
         // created nodes
         for (Node node : data.createdNodes()) {
             String id = id(node);
-            actions.put(new SyncDataKey(indexName, typeNode, id), indexRequest(id, node));
+            actions.put(key(typeNode, id), indexRequest(id, node));
         }
 
         // deleted nodes
         for (Node node : data.deletedNodes()) {
             String id = id(node);
-            actions.put(new SyncDataKey(indexName, typeNode, id), deleteRequest(id, node));
+            actions.put(key(typeNode, id), deleteRequest(id, node));
         }
 
         // assigned labels
@@ -202,9 +205,9 @@ public class ElasticSearchEventHandler implements TransactionEventHandler<Collec
             Node node = labelEntry.node();
             String id = id(node);
             if (data.isDeleted(labelEntry.node())) {
-                actions.put(new SyncDataKey(indexName, typeNode, id), deleteRequest(id, node));
+                actions.put(key(typeNode, id), deleteRequest(id, node));
             } else {
-                actions.put(new SyncDataKey(indexName, typeNode, id), indexRequest(id, labelEntry.node()));
+                actions.put(key(typeNode, id), indexRequest(id, labelEntry.node()));
             }
         }
 
@@ -212,14 +215,14 @@ public class ElasticSearchEventHandler implements TransactionEventHandler<Collec
         for (LabelEntry labelEntry : data.removedLabels()) {
             Node node = labelEntry.node();
             String id = id(node);
-            actions.put(new SyncDataKey(indexName, typeNode, id), deleteRequest(id, node));
+            actions.put(key(typeNode, id), deleteRequest(id, node));
         }
 
         // assigned node properties
         for (PropertyEntry<Node> propEntry : data.assignedNodeProperties()) {
             Node node = propEntry.entity();
             String id = id(node);
-            actions.put(new SyncDataKey(indexName, typeNode, id), indexRequest(id, node));
+            actions.put(key(typeNode, id), indexRequest(id, node));
         }
 
         // removed node properties
@@ -227,9 +230,9 @@ public class ElasticSearchEventHandler implements TransactionEventHandler<Collec
             Node node = propEntry.entity();
             String id = id(node);
             if (data.isDeleted(node)) {
-                actions.put(new SyncDataKey(indexName, typeNode, id), deleteRequest(id, node));
+                actions.put(key(typeNode, id), deleteRequest(id, node));
             } else {
-                actions.put(new SyncDataKey(indexName, typeNode, id), indexRequest(id, node));
+                actions.put(key(typeNode, id), indexRequest(id, node));
             }
         }
     }
@@ -239,20 +242,20 @@ public class ElasticSearchEventHandler implements TransactionEventHandler<Collec
         // created relationships
         for (Relationship relationship : data.createdRelationships()) {
             String id = id(relationship);
-            actions.put(new SyncDataKey(indexName, typeNode, id), indexRequest(id, relationship));
+            actions.put(key(typeRelationship, id), indexRequest(id, relationship));
         }
 
         // deleted relationships
         for (Relationship relationship : data.deletedRelationships()) {
             String id = id(relationship);
-            actions.put(new SyncDataKey(indexName, typeNode, id), deleteRequest(id, relationship));
+            actions.put(key(typeRelationship, id), deleteRequest(id, relationship));
         }
 
         // assigned relationship properties
         for (PropertyEntry<Relationship> propEntry : data.assignedRelationshipProperties()) {
             Relationship relationship = propEntry.entity();
             String id = id(relationship);
-            actions.put(new SyncDataKey(indexName, typeNode, id), indexRequest(id, relationship));
+            actions.put(key(typeRelationship, id), indexRequest(id, relationship));
         }
 
         // removed relationship properties
@@ -260,11 +263,15 @@ public class ElasticSearchEventHandler implements TransactionEventHandler<Collec
             Relationship relationship = propEntry.entity();
             String id = id(relationship);
             if (data.isDeleted(relationship)) {
-                actions.put(new SyncDataKey(indexName, typeNode, id), deleteRequest(id, relationship));
+                actions.put(key(typeRelationship, id), deleteRequest(id, relationship));
             } else {
-                actions.put(new SyncDataKey(indexName, typeNode, id), indexRequest(id, relationship));
+                actions.put(key(typeRelationship, id), indexRequest(id, relationship));
             }
         }
+    }
+
+    private SyncDataKey key(String type, String id) {
+        return new SyncDataKey(indexName, type, id);
     }
 
     private BulkableAction<DocumentResult> indexRequest(String id, Entity entity) {
@@ -279,16 +286,6 @@ public class ElasticSearchEventHandler implements TransactionEventHandler<Collec
 
     private BulkableAction<DocumentResult> deleteRequest(String id, Entity entity) {
         Delete.Builder builder = new Delete.Builder(id).index(indexName);
-        if (entity instanceof Node) {
-            builder.type(typeNode);
-        } else if (entity instanceof Relationship) {
-            builder.type(typeRelationship);
-        }
-        return builder.build();
-    }
-
-    private BulkableAction<DocumentResult> updateRequest(String id, Entity entity) {
-        Update.Builder builder = new Update.Builder(properties(id, entity)).index(indexName).id(id);
         if (entity instanceof Node) {
             builder.type(typeNode);
         } else if (entity instanceof Relationship) {
